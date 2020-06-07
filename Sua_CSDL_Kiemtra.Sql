@@ -1,44 +1,74 @@
-Create Database CSDL_KIEMTRA;
+Create Database DL_KIEMTRA;
 go
 Use CSDL_KIEMTRA;
 go
 
+
+SELECT * INTO VATTU FROM DL_Kiemtra.dbo.VATTU
+
+ALTER Table VATTU ADD CONSTRAINT  CHECK_GIAMUA CHECK (Giamua>0)
+ALTER Table VATTU ADD CONSTRAINT  CHECK_SLT CHECK (Slton>0)
+ALTER Table HOADON ADD CONSTRAINT  CHECK_TONGTG CHECK (Tongtg>0)
+ALTER Table CHITIETHOADON ADD CONSTRAINT  CHECK_SL CHECK (SL>0)
+ALTER Table CHITIETHOADON ADD CONSTRAINT  CHECK_GIABAN CHECK (Giaban>0)
+
+ALTER TABLE VATTU ALTER COLUMN Mavt VARCHAR(5) NOT NULL
+ALTER TABLE KHACHHANG ALTER COLUMN Makh VARCHAR(10) NOT NULL
+ALTER TABLE HOADON ALTER COLUMN Mahd VARCHAR(10) NOT NULL
+ALTER TABLE CHITIETHOADON ALTER COLUMN Mahd VARCHAR(10) NOT NULL
+ALTER TABLE CHITIETHOADON ALTER COLUMN Mavt VARCHAR(5) NOT NULL
+
+ALTER TABLE VATTU ADD CONSTRAINT PK_MAVT PRIMARY KEY (Mavt)
+ALTER TABLE KHACHHANG ADD CONSTRAINT PK_MAKH PRIMARY KEY (Makh)
+ALTER TABLE HOADON ADD CONSTRAINT PK_HD PRIMARY KEY (Mahd)
+ALTER TABLE CHITIETHOADON ADD CONSTRAINT PK_CTHD PRIMARY KEY (Mahd,Mavt)
+
+ALTER TABLE HOADON ADD CONSTRAINT KP_HD_KH FOREIGN KEY (Makh) REFERENCES KHACHHANG (Makh)
+ALTER TABLE CHITIETHOADON ADD CONSTRAINT KP_HD_KH FOREIGN KEY (Mahd) REFERENCES KHACHHANG (Mahd)
+ALTER TABLE CHITIETHOADON ADD CONSTRAINT KP_HD_KH FOREIGN KEY (Mavt) REFERENCES KHACHHANG (Mavt)
+--1)
+SELECT *
+FROM VATTU
+WHERE Tenvt LIKE 'GẠCH%'
+--2)
+SELECT TOP 1  Diachi, SUM(Sl*Giaban) AS DOANHTHU
+FROM KHACHHANG INNER JOIN HOADON ON KHACHHANG.Makh = HOADON.Makh
+				INNER JOIN CHITIETHOADON ON HOADON.Mahd = CHITIETHOADON.Mahd
+GROUP BY Diachi
+ORDER BY DOANHTHU DESC
+--3)
+SELECT VATTU.Mavt, Tenvt , Dvt 
+FROM VATTU LEFT JOIN CHITIETHOADON ON VATTU.Mavt = CHITIETHOADON.Mavt
+WHERE CHITIETHOADON.Mavt IS NULL
+
+
 Create Table KHACHHANG(
-	Makh varchar(5) PRIMARY KEY,
+	Makh varchar(5) ,
 	Tenkh Nvarchar(30) not null,
 	Diachi Nvarchar(50),
 	Dt varchar(11),
 	Email varchar(30));
 	
 Create Table VATTU(
-	Mavt varchar(5) PRIMARY KEY,
+	Mavt varchar(5) ,
 	Tenvt Nvarchar(30) not null,
 	Dvt Nvarchar(20),
-	Giamua float CHECK (Giamua > 0),
-	Slton int CHECK (Slton > 0)
-	);
+	Giamua float,
+	Slton int);
 	
 Create Table HOADON(
-	Mahd varchar(10) PRIMARY KEY,
+	Mahd varchar(10),
 	Ngay smallDateTime,
 	Makh varchar(5),
-	Tongtg float,
-	CONSTRAINT FK_KHACHHANG FOREIGN KEY (Makh) REFERENCES KHACHHANG(Makh),
-	);
+	Tongtg float);
 	
 Create Table CHITIETHOADON(
 	Mahd varchar(10),
 	Mavt varchar(5),
-	Sl int CHECK (Sl>0),
+	Sl int,
 	Khuyenmai float,
-	Giaban float,
-	CONSTRAINT PF_Mahd_Mavt PRIMARY KEY (Mahd, Mavt),
-	CONSTRAINT FK_Mahd FOREIGN KEY (Mahd) REFERENCES HOADON(Mahd),
-	CONSTRAINT FK_Mavt FOREIGN KEY (Mavt) REFERENCES VATTU(Mavt),
-	);
-
-
-
+	Giaban float);
+	
 SET DATEFORMAT dmy;
 
 Insert Into VATTU Values('VT01',N'Xi măng',N'Bao',50000,5000)
@@ -205,143 +235,71 @@ SELECT DISTINCT HOADON.Mahd AS [MÃ HOÁ ĐƠN],NGAY AS [NGÀY LẬP HOÁ ĐƠN]
 FROM HOADON, KHACHHANG, CHITIETHOADON , VATTU
 WHERE KHACHHANG.Makh=HOADON.Makh AND CHITIETHOADON.Mavt = VATTU.Mavt AND Ngay BETWEEN '01-01-2016 00:00:00' AND '01-04-2016 00:00:00'
 
-/*
---Câu 21. Lấy ra danh sách các hóa đơn gồm các thông tin: Số hóa đơn, ngày, tên khách hàng, địa chỉ khách hàng, tổng trị giá của hóa đơn.
 
-CREATE VIEW Cau21 AS
-SELECT CHITIETHOADON.Mahd,Ngay,Tenkh,Diachi, SUM(Giaban) AS Tong
-FROM CHITIETHOADON INNER JOIN HOADON ON HOADON.Mahd = CHITIETHOADON.Mahd
-INNER JOIN dbo.KHACHHANG ON KHACHHANG.Makh = HOADON.Makh
-GROUP BY CHITIETHOADON.Mahd,Ngay,Tenkh,Diachi
+--Câu 21. Lấy ra danh sách các hóa đơn gồm các thông tin: Số hóa đơn, ngày, tên khách hàng, địa chỉ khách hàng, tổng trị giá của hóa đơn.HOA
+SELECT HOADON.Mahd, Ngay, Tenkh AS [TÊN KHÁCH HÀNG], Diachi AS [ĐỊA CHỈ KHÁCH HÀNG], Tongtg = CHITIETHOADON.Sl * CHITIETHOADON.Giaban
+FROM KHACHHANG, HOADON, CHITIETHOADON
+WHERE KHACHHANG.Makh=HOADON.Makh AND CHITIETHOADON.Mahd = HOADON.Mahd
 
+SELECT *
+FROM CHITIETHOADON
 --Câu 22. Lấy ra hóa đơn có tổng trị giá lớn nhất gồm các thông tin: Số hóa đơn, ngày, tên khách hàng, địa chỉ khách hàng, tổng trị giá của hóa đơn.
+SELECT HOADON.Mahd, Ngay, Tenkh AS [TÊN KHÁCH HÀNG], Diachi AS [ĐỊA CHỈ KHÁCH HÀNG], Tongtg = CHITIETHOADON.Sl * CHITIETHOADON.Giaban 
+FROM KHACHHANG, HOADON, CHITIETHOADON
+WHERE G AND CHITIETHOADON.Mahd = HOADON.Mahd
+--Câu 23. Lấy ra hóa đơn có tổng trị giá lớn nhất trong tháng 5/2010 gồm các thông tin: Số hóa đơn, ngày, tên khách hàng, địa chỉ khách hàng, tổng trị giá của hóa đơn.
+CREATE VIEW MAXSUM AS
+SELECT HOADON.Mahd, Ngay, Tenkh AS [TÊN KHÁCH HÀNG], Diachi AS [ĐỊA CHỈ KHÁCH HÀNG], Tongtg = CHITIETHOADON.Sl * CHITIETHOADON.Giaban
+FROM KHACHHANG, HOADON, CHITIETHOADON
 
-CREATE VIEW Cau22 AS
-SELECT Mahd,Ngay,Tenkh,Diachi,Tong
-FROM Cau21
-WHERE Tong IN (SELECT MAX(Tong) FROM Cau21)
 
---Câu 23. Lấy ra hóa đơn có tổng trị giá lớn nhất trong tháng 5/2016 gồm các thông tin: Số hóa đơn, ngày, tên khách hàng, địa chỉ khách hàng, tổng trị giá của hóa đơn.
 
-CREATE VIEW TongThang AS
-SELECT CHITIETHOADON.Mahd,Ngay, CONVERT(INT,MONTH(Ngay)) AS Thang,Tenkh,Diachi, Sum(Giaban) AS Tong
-FROM CHITIETHOADON INNER JOIN HOADON ON HOADON.Mahd = CHITIETHOADON.Mahd
-INNER JOIN dbo.KHACHHANG ON KHACHHANG.Makh = HOADON.Makh
-GROUP BY CHITIETHOADON.Mahd,Ngay,Tenkh,Diachi
+SELECT Ngay,MAX(Tongtg)
+FROM MAXSUM
 
-CREATE VIEW TongT5 AS
-SELECT Mahd,Ngay,Tenkh,Diachi,Tong
-FROM TongThang
-WHERE Thang = 5
 
-CREATE VIEW Cau23 AS
-SELECT Mahd,Ngay,Tenkh,Diachi,Tong
-FROM TongT5
-WHERE Tong IN (SELECT MAX(Tong) FROM TongT5)
-select * from cau23
+DROP VIEW MAXSUM
+
+
+
+SELECT *
+FROM MAXSUM
 
 --Câu 24. Đếm xem mỗi khách hàng có bao nhiêu hóa đơn.
-
-create view cau24 as
-SELECT KHACHHANG.Makh, Tenkh, COUNT(DISTINCT CHITIETHOADON.Mahd) AS Tonghd
-FROM KHACHHANG INNER JOIN HOADON ON HOADON.Makh = KHACHHANG.Makh
-INNER JOIN CHITIETHOADON ON CHITIETHOADON.Mahd = HOADON.Mahd
-GROUP BY KHACHHANG.Makh,Tenkh
-
 --Câu 25. Đếm xem mỗi khách hàng, mỗi tháng có bao nhiêu hóa đơn.
-
-CREATE VIEW DonThang1 AS
-SELECT KhachHang.Makh,Tenkh,CONVERT(INT,MONTH(Ngay)) AS Thang, COUNT(DISTINCT CHITIETHOADON.Mahd) AS Tonghd
-FROM KHACHHANG INNER JOIN HOADON ON HOADON.Makh = KHACHHANG.Makh
-INNER JOIN CHITIETHOADON ON CHITIETHOADON.Mahd = HOADON.Mahd
-GROUP BY Ngay, Tenkh,KHACHHANG.Makh
-
-CREATE VIEW Cau25_1 AS
-SELECT Makh,Tenkh, Thang, COUNT(Tonghd) AS HD
-FROM DonThang1
-GROUP BY Makh,Thang, Tenkh
-
 --Câu 26. Lấy ra các thông tin của khách hàng có số lượng hóa đơn mua hàng nhiều nhất.
-
-CREATE VIEW Cau26 AS
-SELECT cau24.Makh,cau24.Tenkh,Diachi, Dt, Email
-FROM KHACHHANG INNER JOIN cau24 ON dbo.KHACHHANG.Makh=cau24.Makh 
-WHERE Tonghd IN (SELECT MAX(Tonghd) FROM cau24)
-
 --Câu 27. Lấy ra các thông tin của khách hàng có số lượng hàng mua nhiều nhất.
-
-CREATE VIEW TongSLHang AS
-SELECT KHACHHANG.Makh, KHACHHANG.Tenkh, SUM(Sl) AS TongSL
-FROM KHACHHANG INNER JOIN HOADON ON HOADON.Makh = KHACHHANG.Makh
-INNER JOIN CHITIETHOADON ON CHITIETHOADON.Mahd = HOADON.Mahd
-GROUP BY KHACHHANG.Makh, Tenkh
-
-CREATE VIEW Cau27 AS
-SELECT TongSLHang.Makh,TongSLHang.Tenkh,Diachi, Dt, Email
-FROM KHACHHANG INNER JOIN TongSLHang ON dbo.KHACHHANG.Makh=TongSLHang.Makh 
-WHERE TongSL IN (SELECT MAX(TongSL) FROM TongSLHang)
-
 --Câu 28. Lấy ra các thông tin về các mặt hàng mà được bán trong nhiều hóa đơn nhất.
-
-CREATE VIEW SoLanVT as
-SELECT Mavt, COUNT(Mavt) AS Solan 
-FROM dbo.CHITIETHOADON
-GROUP BY Mavt
-
-CREATE VIEW Cau28 AS
-SELECT VATTU.Mavt, Tenvt
-FROM VATTU, SoLanVT
-WHERE VATTU.Mavt=SoLanVT.Mavt AND Solan IN (SELECT MAX(Solan) FROM SoLanVT)
-
 --Câu 29. Lấy ra các thông tin về các mặt hàng mà được bán nhiều nhất.
-
-CREATE VIEW TongVT as
-SELECT Mavt, SUM(Sl) AS TongVT
-FROM dbo.CHITIETHOADON
-GROUP BY Mavt
-
-CREATE VIEW Cau29 AS
-SELECT VATTU.Mavt, Tenvt, TongVT
-FROM VATTU, TongVT
-WHERE VATTU.Mavt=TongVT.Mavt AND TongVT IN (SELECT MAX(TongVT) FROM TongVT)
-
 --Câu 30. Lấy ra danh sách tất cả các khách hàng gồm Mã khách hàng, tên khách hàng, địa chỉ, số lượng hóa đơn đã mua (nếu khách hàng đó chưa mua hàng thì cột số lượng hóa đơn để trống)
 
-CREATE VIEW SoHD AS 
-SELECT Makh, COUNT(Mahd) AS SoHD
-FROM dbo.HOADON
-GROUP BY Makh
 
-CREATE VIEW Cau30 AS
-SELECT dbo.KHACHHANG.Makh, Tenkh, Diachi, CASE WHEN (SoHD IS NULL) THEN 0 ELSE SoHD END AS SoHoaDon
-FROM KHACHHANG LEFT JOIN SoHD ON KHACHHANG.Makh=SoHD.Makh
-SELECT * FROM Cau30
-*/
-
---4.1 
-
-CREATE PROC Cau01 @ngay smallDateTime AS
+--Câu 4: Tạo các procedure sau
+--1. Lấy ra danh các khách hàng đã mua hàng trong ngày X, với X là tham số truyền vào.
+CREATE proc CAU1 @ngay smalldatetime AS
+	BEGIN
+		SELECT Tenkh,Diachi
+		FROM KHACHHANG INNER JOIN HOADON ON KHACHHANG.Makh = HOADON.Makh
+		WHERE NGAY = @ngay
+	END
+SET DATEFORMAT DAY
+EXEC CAU1 '05/09/2016'
+GO
+--2. Lấy ra danh sách khách hàng có tổng trị giá các đơn hàng lớn hơn X (X là tham số).
+CREATE PROC CAU2 
+@X INT
+AS
 BEGIN
-	SELECT Tenkh, Diachi 
-	FROM KHACHHANG INNER JOIN HOADON on KHACHHANG.Makh = HOADON.Makh
-	WHERE Ngay = @ngay
+	SELECT *
+	FROM KHACHHANG
+	WHERE 
 END
-
-set DATEFORMAT DMY 
-EXEC Cau01 '25/05/2016'
-
---4.3
-
-CREATE PROC Cau03 @sokh int AS
-BEGIN
-	SELECT TOP (@sokh) Tenkh 
-	FROM KHACHHANG, CHITIETHOADON, HOADON	
-	WHERE KHACHHANG.Makh = HOADON.Makh AND HOADON.Mahd = CHITIETHOADON.Mahd AND (Sl*Giaban) > @sokh
-	GROUP BY KHACHHANG.Tenkh
-END
-
-EXEC Cau03 @sokh = 5000
-
-
---4.3
-
+--3. Lấy ra danh sách X khách hàng có tổng trị giá các đơn hàng lớn nhất (X là tham số).
+--4. Lấy ra danh sách X mặt hàng có số lượng bán lớn nhất (X là tham số).
+--5. Lấy ra danh sách X mặt hàng bán ra có lãi ít nhất (X là tham số).
+--6. Lấy ra danh sách X đơn hàng có tổng trị giá lớn nhất (X là tham số).
+--7. Tính giá trị cho cột khuyến mãi như sau: Khuyến mãi 5% nếu SL >100, 10% nếu SL>500.
+--8. Tính số lại số lượng tồn cho tất cả các mặt hàng (SLTON = SLTON – tổng SL bán được).Bài thực hành Hệ quản trị CSDL số 2 5
+--9. Tính trị giá cho mỗi hóa đơn.
+--10. Tạo ra table KH_VIP có cấu trúc giống với cấu trúc table KHACHHANG. Lưu các khách hàng
+--có tổng trị giá của tất cả các đơn hàng >=100.000.000 vào table KH_VIP
